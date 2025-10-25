@@ -1,6 +1,6 @@
 export type ThreatLevel = 'None' | 'Low' | 'Medium' | 'High' | 'Critical';
 export type ActionTaken = 'Allowed' | 'Monitored' | 'Blocked';
-export type ViewType = 'dashboard' | 'traffic' | 'adaptive-defense' | 'ip-analyzer' | 'target' | 'attacker' | 'threat-model';
+export type ViewType = 'dashboard' | 'traffic' | 'adaptive-defense' | 'ip-analyzer' | 'target' | 'attacker' | 'threat-model' | 'team';
 export type TargetLoginStatus = 'Logged Out' | 'Logged In' | 'Login Bypassed!';
 export type SecurityLevel = 'Low' | 'Medium' | 'High';
 
