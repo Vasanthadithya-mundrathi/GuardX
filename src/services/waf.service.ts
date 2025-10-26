@@ -96,6 +96,9 @@ export class WafService {
             const log = this.createLogEntry('High', 'Blocked', 'Rate Limited', req.payload);
             this.requestLogs.update(logs => [log, ...logs.slice(0, 199)]);
             this.stats.update(s => ({ ...s, totalRequests: s.totalRequests + 1, threatsDetected: s.threatsDetected + 1, threatsBlocked: s.threatsBlocked + 1 }));
+            if (this.firewallEnabled()) {
+               this.generateAndDeployAdaptiveRule('Rate Limit', 'Multiple failed login attempts detected.');
+            }
             return { success: false, message: `Attack (Rate Limit) Blocked by GuardX Firewall.`, log };
         }
     }
@@ -133,6 +136,8 @@ export class WafService {
 
     if (blockRequest) {
         this.stats.update(s => ({...s, threatsBlocked: s.threatsBlocked + 1}));
+        // This is the trigger for the Adaptive Defense Engine
+        this.generateAndDeployAdaptiveRule(threat!.type, req.payload!);
         return { success: false, message: `Attack (${threat?.type}) Blocked by GuardX Firewall.`, log };
     }
 
@@ -169,7 +174,6 @@ export class WafService {
     return { success: true, message: `Request Allowed. Target processed at ${securityLevel} security.`, log };
   }
 
-
   private createLogEntry(level: ThreatLevel, action: ActionTaken, type: string | null = null, payload: string | undefined = undefined): RequestLog {
     const method = (['GET', 'POST', 'PUT', 'DELETE'] as const)[Math.floor(Math.random() * 4)];
     const source = this.ATTACKER_SOURCE;
@@ -200,6 +204,67 @@ export class WafService {
       this.stats.update(s => ({...s, uptime: `${d}d ${h}h ${m}m`}));
     }, 1000 * 60);
   }
+
+  async generateAndDeployAdaptiveRule(threatType: string, payload: string): Promise<void> {
+    if (!this.ai) return;
+
+    // Prevent duplicate rules for the same threat type
+    const existingRules = this.adaptiveRules();
+    if (existingRules.some(rule => rule.threatType === threatType)) {
+      console.log(`Adaptive rule for ${threatType} already exists. Skipping.`);
+      return;
+    }
+
+    const prompt = `
+      You are a WAF (Web Application Firewall) security analyst.
+      An attack with the type "${threatType}" containing the following payload was just blocked:
+      PAYLOAD: "${payload}"
+      
+      Your task is to create a brief, human-readable description for a new dynamic firewall rule to mitigate this threat vector.
+      The description should be a single sentence, starting with "Block requests that..."
+      
+      Example for XSS: "Block requests that appear to contain cross-site scripting probes."
+      Example for SQL Injection: "Block requests attempting to exploit the database via SQL injection."
+
+      Return a JSON object with one key: "description".
+    `;
+
+    try {
+      const response: GenerateContentResponse = await this.ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              description: { type: Type.STRING },
+            },
+            required: ['description']
+          },
+        },
+      });
+
+      const resultText = response.text;
+      const resultJson = JSON.parse(resultText);
+
+      const newRule: AdaptiveRule = {
+        id: `rule-${Date.now()}`,
+        timestamp: new Date(),
+        threatType: threatType,
+        description: resultJson.description,
+        sourcePayload: payload,
+        status: 'Active',
+      };
+      
+      this.adaptiveRules.update(rules => [newRule, ...rules]);
+      this.stats.update(s => ({...s, adaptiveRules: s.adaptiveRules + 1 }));
+
+    } catch (error) {
+      console.error('Error generating adaptive rule with Gemini:', error);
+    }
+  }
+
 
   async generatePayloadFromPrompt(prompt: string): Promise<void> {
     if (!this.ai) {
@@ -338,7 +403,8 @@ export class WafService {
               riskScore: { type: Type.NUMBER, description: 'A score from 0 to 100 representing the risk level.' },
               country: { type: Type.STRING, description: 'The country of origin for the IP.' },
               isp: { type: Type.STRING, description: 'The Internet Service Provider.' },
-              knownThreats: { type: Type.ARRAY, items: { type: String }, description: 'A list of threat types associated with this IP (e.g., Spam, Malware, Botnet C&C).' },
+              // FIX: The type for array items in responseSchema should use the Type enum, not the String constructor.
+              knownThreats: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'A list of threat types associated with this IP (e.g., Spam, Malware, Botnet C&C).' },
               summary: { type: Type.STRING, description: 'A concise summary of the IP reputation.' }
             },
             required: ['ip', 'riskScore', 'country', 'isp', 'knownThreats', 'summary']
@@ -350,6 +416,7 @@ export class WafService {
       const resultJson = JSON.parse(resultText);
       this.ipAnalysisResult.set(resultJson as IPReputationResult);
 
+    // FIX: A `catch` block requires curly braces `{}` to define its scope.
     } catch (error) {
       console.error('Error analyzing IP with Gemini:', error);
       this.ipAnalysisError.set('Failed to analyze the IP address. The AI service may be unavailable or the request was malformed.');
