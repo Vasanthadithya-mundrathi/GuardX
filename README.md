@@ -57,6 +57,30 @@ The GuardX interface is divided into several interactive modules:
 
 GuardX operates as a self-contained, client-side simulation. This design allows for a safe yet realistic demonstration of WAF principles without requiring a complex backend infrastructure.
 
+```mermaid
+graph LR
+    subgraph "Browser Client (Angular App)"
+        Attacker["Attacker Tools UI"] -- "1. Simulates Attack" --> WAF;
+        WAF["WafService (Core Logic)"] -- "2. Intercepts Request" --> WAF;
+        WAF -- "3a. No Threat Detected" --> Target["Target Site UI"];
+        WAF -- "3b. Threat Detected" --> Blocked["Request Blocked"];
+        Blocked -- "4. Is Threat Novel?" --> Gemini["Google Gemini API"];
+        Gemini -- "5. Generates New Rule" --> WAF;
+        WAF -- "6. Deploys Adaptive Rule" --> State["State (Angular Signals)"];
+        WAF -- "7. Updates Logs & Stats" --> State;
+        State -- "8. UI Reacts to State" --> Dashboard["Dashboard & Other UI"];
+    end
+
+    %% Style Definitions for better visibility on GitHub Dark Mode
+    style WAF fill:#2c3a58,stroke:#22d3ee,stroke-width:2px,color:#ffffff
+    style Gemini fill:#2c3a58,stroke:#fbbc05,stroke-width:2px,color:#ffffff
+    style State fill:#1a2234,stroke:#9ca3af,stroke-width:1px,stroke-dasharray: 5 5,color:#ffffff
+    style Attacker fill:#2c3a58,stroke:#ef4444,stroke-width:2px,color:#ffffff
+    style Target fill:#2c3a58,stroke:#34d399,stroke-width:2px,color:#ffffff
+    style Blocked fill:#2c3a58,stroke:#ef4444,stroke-width:1px,color:#ffffff
+    style Dashboard fill:#2c3a58,stroke:#9ca3af,stroke-width:1px,color:#ffffff
+```
+
 1.  **Attacker Simulation**: The "Attacker Tools" view initiates a simulated web request.
 2.  **WAF Service Interception**: An Angular service (`WafService`) acts as the central firewall. It intercepts all simulated requests before they can reach the "Target Site."
 3.  **Threat Analysis & Action**:

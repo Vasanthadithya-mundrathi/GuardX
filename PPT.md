@@ -1,12 +1,3 @@
----
-marp: true
-theme: uncover
-backgroundColor: #121828
-color: #9ca3af
-class:
-  - invert
----
-
 # **GuardX**
 ## AI-Powered Adaptive Web Application Firewall
 
@@ -72,11 +63,14 @@ graph LR
         State -- "8. UI Reacts to State" --> Dashboard["Dashboard & Other UI"];
     end
 
-    style WAF fill:#1a2234,stroke:#22d3ee,stroke-width:2px
-    style Gemini fill:#1a2234,stroke:#fbbc05,stroke-width:2px
-    style State fill:#1a2234,stroke:#9ca3af,stroke-width:1px,stroke-dasharray: 5 5
-    style Attacker fill:#1a2234,stroke:#ef4444,stroke-width:2px
-    style Target fill:#1a2234,stroke:#34d399,stroke-width:2px
+    %% Style Definitions for better visibility on GitHub Dark Mode
+    style WAF fill:#2c3a58,stroke:#22d3ee,stroke-width:2px,color:#ffffff
+    style Gemini fill:#2c3a58,stroke:#fbbc05,stroke-width:2px,color:#ffffff
+    style State fill:#1a2234,stroke:#9ca3af,stroke-width:1px,stroke-dasharray: 5 5,color:#ffffff
+    style Attacker fill:#2c3a58,stroke:#ef4444,stroke-width:2px,color:#ffffff
+    style Target fill:#2c3a58,stroke:#34d399,stroke-width:2px,color:#ffffff
+    style Blocked fill:#2c3a58,stroke:#ef4444,stroke-width:1px,color:#ffffff
+    style Dashboard fill:#2c3a58,stroke:#9ca3af,stroke-width:1px,color:#ffffff
 ```
 
 <div style="font-size: 0.7em; margin-top: 1em;">
