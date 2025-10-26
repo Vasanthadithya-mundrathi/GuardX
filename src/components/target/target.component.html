@@ -31,9 +31,9 @@
     <!-- Product Info -->
     <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg border border-gray-700">
       <img src="https://picsum.photos/seed/gadget/800/400" alt="Product Image" class="w-full h-64 object-cover rounded-lg mb-4">
-      <h3 class="text-2xl font-bold text-cyan-400">Quantum Entangler X1</h3>
-      <p class="text-gray-400 mt-2">The latest in personal quantum computing. Secure, fast, and guaranteed to collapse wave functions on demand. Perfect for everyday superpositioning.</p>
-      <div class="mt-4 text-4xl font-bold text-white">$1,337.00</div>
+      <h3 class="text-2xl font-bold text-cyan-400">{{ productDetails().name }}</h3>
+      <p class="text-gray-400 mt-2">{{ productDetails().description }}</p>
+      <div class="mt-4 text-4xl font-bold text-white">${{ productDetails().price.toFixed(2) }}</div>
     </div>
 
     <!-- Login & Status -->

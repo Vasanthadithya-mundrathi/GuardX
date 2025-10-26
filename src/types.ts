@@ -5,6 +5,20 @@ export type TargetLoginStatus = 'Logged Out' | 'Logged In' | 'Login Bypassed!';
 export type SecurityLevel = 'Low' | 'Medium' | 'High';
 export type HoneypotStatus = 'Active' | 'Under Attack' | 'Initializing';
 
+// For AI Attack Swarm
+export type AiAttackStepStatus = 'Pending' | 'In Progress' | 'Completed';
+export interface AiAttackStep {
+  id: number;
+  type: 'generate_payload' | 'brute_force';
+  title: string;
+  prompt: string;
+  endpoint: '/reviews' | '/login' | '/products';
+  status: AiAttackStepStatus;
+  payload: string | null;
+  result: string | null;
+  success: boolean | null;
+}
+
 export interface HoneypotStats {
   status: HoneypotStatus;
   luredAttackers: number;
@@ -69,4 +83,10 @@ export interface AdaptiveRule {
     description: string;
     sourcePayload: string;
     status: 'Active' | 'Monitoring';
+}
+
+export interface ProductDetails {
+  name: string;
+  description: string;
+  price: number;
 }

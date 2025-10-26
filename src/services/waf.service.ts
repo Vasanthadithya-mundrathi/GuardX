@@ -1,6 +1,6 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
-import { RequestLog, ThreatStats, ThreatLevel, ActionTaken, ViewType, ThreatAnalysisResult, IPReputationResult, AdaptiveRule, TargetLoginStatus, PayloadGeneratorResult, SecurityLevel, HoneypotStats } from '../types';
+import { RequestLog, ThreatStats, ThreatLevel, ActionTaken, ViewType, ThreatAnalysisResult, IPReputationResult, AdaptiveRule, TargetLoginStatus, PayloadGeneratorResult, SecurityLevel, HoneypotStats, ProductDetails } from '../types';
 
 @Injectable({
   providedIn: 'root',
@@ -36,6 +36,11 @@ export class WafService {
       'Could be better, but it does the job.'
   ]);
   readonly targetPageLoginStatus = signal<TargetLoginStatus>('Logged Out');
+  readonly targetProductDetails = signal<ProductDetails>({
+    name: 'Quantum Entangler X1',
+    description: 'The latest in personal quantum computing. Secure, fast, and guaranteed to collapse wave functions on demand. Perfect for everyday superpositioning.',
+    price: 1337.00
+  });
 
   // Gemini API for payload analysis
   readonly analysisResult: WritableSignal<ThreatAnalysisResult | null> = signal(null);
@@ -113,6 +118,8 @@ export class WafService {
             threat = { type: 'Path Traversal', level: 'High' };
         } else if (req.payload.startsWith('brute-force-attempt-')) {
             threat = { type: 'Brute-Force', level: 'Medium' };
+        } else if (req.path === '/products') {
+            threat = { type: 'Data Tampering', level: 'Medium' };
         }
     }
 
@@ -172,6 +179,25 @@ export class WafService {
         }
     }
 
+    if (req.path === '/products' && req.payload && securityLevel === 'Low') {
+      try {
+        const newDetails: Partial<ProductDetails> = {};
+        const nameMatch = req.payload.match(/"product_?name":\s*"([^"]*)"/i);
+        const descMatch = req.payload.match(/"description":\s*"([^"]*)"/i);
+        const priceMatch = req.payload.match(/"(?:product_)?price":\s*(\d+\.?\d*)/i);
+
+        if (nameMatch?.[1]) newDetails.name = nameMatch[1];
+        if (descMatch?.[1]) newDetails.description = descMatch[1];
+        if (priceMatch?.[1]) newDetails.price = parseFloat(priceMatch[1]);
+        
+        if (Object.keys(newDetails).length > 0) {
+            this.targetProductDetails.update(current => ({ ...current, ...newDetails }));
+        }
+      } catch (e) {
+          console.log("Malformed data tampering payload.");
+      }
+    }
+
     return { success: true, message: `Request Allowed. Target processed at ${securityLevel} security.`, log };
   }
 
@@ -184,7 +210,7 @@ export class WafService {
       ip: source.ip,
       country: source.country,
       method: method,
-      path: type === 'SQL Injection' || type === 'Brute-Force' ? '/login' : '/reviews',
+      path: type === 'SQL Injection' || type === 'Brute-Force' ? '/login' : (type === 'Data Tampering' ? '/products' : '/reviews'),
       status: action === 'Blocked' ? 403 : (method === 'POST' ? 201 : 200),
       threatLevel: level,
       threatType: type,

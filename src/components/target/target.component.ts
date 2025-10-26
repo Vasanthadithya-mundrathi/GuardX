@@ -19,6 +19,7 @@ export class TargetComponent {
   comments = this.wafService.targetPageComments;
   loginStatus = this.wafService.targetPageLoginStatus;
   securityLevel = this.wafService.securityLevel;
+  productDetails = this.wafService.targetProductDetails;
 
   // This is intentionally insecure for demonstration purposes.
   // In a real app, you should NEVER bypass security without extreme care.
