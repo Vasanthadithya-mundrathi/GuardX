@@ -42,11 +42,6 @@ export class WafService {
   readonly aiGeneratedPayload: WritableSignal<PayloadGeneratorResult | null> = signal(null);
   readonly isLoadingAiPayload: WritableSignal<boolean> = signal(false);
   readonly aiPayloadError: WritableSignal<string | null> = signal(null);
-
-  // Gemini API for IP analysis
-  readonly ipAnalysisResult: WritableSignal<IPReputationResult | null> = signal(null);
-  readonly isLoadingIpAnalysis: WritableSignal<boolean> = signal(false);
-  readonly ipAnalysisError: WritableSignal<string | null> = signal(null);
   
   // Attacker Profile
   private readonly ATTACKER_SOURCE = { ip: "142.250.191.78", country: "USA", city: "Mountain View", asn: "AS15169 Google LLC", lat: 37.422, lon: -122.084, userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36" };
@@ -65,7 +60,6 @@ export class WafService {
       console.error("Failed to initialize GoogleGenAI. API_KEY might be missing.", e);
       const errorMsg = "AI service is not configured. Please check API key.";
       this.analysisError.set(errorMsg);
-      this.ipAnalysisError.set(errorMsg);
       this.aiPayloadError.set(errorMsg);
     }
     this.updateUptime();
@@ -265,8 +259,7 @@ export class WafService {
     }
   }
 
-
-  async generatePayloadFromPrompt(prompt: string): Promise<void> {
+  async generatePayloadFromPrompt(options: { prompt: string, target?: string }): Promise<void> {
     if (!this.ai) {
       this.aiPayloadError.set("AI service is not initialized.");
       return;
@@ -277,21 +270,24 @@ export class WafService {
     this.aiGeneratedPayload.set(null);
 
     const level = this.securityLevel();
+    const { prompt, target } = options;
+
     const fullPrompt = `
-      You are a security testing assistant. Your task is to generate a functional, example attack payload based on a user's natural language request.
-      The payload MUST be tailored for the specified web application security level.
+      You are an expert security penetration tester. Your task is to generate a functional, example attack payload based on a user's natural language request.
+      The payload MUST be tailored for the specified web application security level. Be creative and attempt to bypass common filters.
       
       Security Level Definitions:
       - Low: No filtering. Basic payloads work.
-      - Medium: Basic filtering is active. For XSS, '<script>' tags are stripped but other vectors like 'onerror' might work. For SQLi, basic quote escaping is active, so simple "' OR 1=1" attacks will fail.
+      - Medium: Basic filtering is active. For XSS, '<script>' tags are stripped but other vectors like 'onerror', 'onload', SVG, or other HTML tags might work. For SQLi, basic quote escaping is active, so simple "' OR 1=1" attacks will fail. Try to use techniques that don't rely on single quotes.
       - High: Strong filtering and sanitization. All HTML is escaped, and parameterized queries are simulated, making these attacks likely impossible.
 
       Current Security Level: "${level}"
       User Request: "${prompt}"
+      ${target ? `The payload will be injected into a parameter named: "${target}"` : ''}
 
       Generate a payload that would be effective at the "${level}" security level. 
-      If an attack is not feasible at this level (especially 'High'), state that in the description and provide an empty or harmless payload.
-      Provide your response in the structured JSON format as defined by the schema.
+      If an attack is not feasible at this level (especially 'High'), state that clearly in the description and provide an empty or harmless payload.
+      Provide your response in the structured JSON format as defined by the schema. Be concise.
     `;
 
     try {
@@ -368,60 +364,6 @@ export class WafService {
       this.analysisError.set('Failed to analyze the payload. The AI service may be unavailable or the request was malformed.');
     } finally {
       this.isLoadingAnalysis.set(false);
-    }
-  }
-
-  async analyzeIp(ip: string): Promise<void> {
-    if (!this.ai) {
-      this.ipAnalysisError.set("AI service is not initialized.");
-      return;
-    }
-    
-    this.isLoadingIpAnalysis.set(true);
-    this.ipAnalysisError.set(null);
-    this.ipAnalysisResult.set(null);
-
-    const prompt = `
-      You are a Cyber Threat Intelligence Analyst.
-      Analyze the provided IP address and return a detailed reputation report.
-      Provide your response in the structured JSON format as defined by the schema.
-      The risk score should be a number from 0 (safe) to 100 (highly malicious). For a well-known public DNS like 8.8.8.8, the risk should be very low. For an IP like 142.250.191.78, you can assign a medium risk as it's a large provider.
-      The summary should be a concise, one-paragraph explanation of your findings.
-      IP Address: "${ip}"
-    `;
-
-    try {
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              ip: { type: Type.STRING },
-              riskScore: { type: Type.NUMBER, description: 'A score from 0 to 100 representing the risk level.' },
-              country: { type: Type.STRING, description: 'The country of origin for the IP.' },
-              isp: { type: Type.STRING, description: 'The Internet Service Provider.' },
-              // FIX: The type for array items in responseSchema should use the Type enum, not the String constructor.
-              knownThreats: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'A list of threat types associated with this IP (e.g., Spam, Malware, Botnet C&C).' },
-              summary: { type: Type.STRING, description: 'A concise summary of the IP reputation.' }
-            },
-            required: ['ip', 'riskScore', 'country', 'isp', 'knownThreats', 'summary']
-          },
-        },
-      });
-
-      const resultText = response.text;
-      const resultJson = JSON.parse(resultText);
-      this.ipAnalysisResult.set(resultJson as IPReputationResult);
-
-    // FIX: A `catch` block requires curly braces `{}` to define its scope.
-    } catch (error) {
-      console.error('Error analyzing IP with Gemini:', error);
-      this.ipAnalysisError.set('Failed to analyze the IP address. The AI service may be unavailable or the request was malformed.');
-    } finally {
-      this.isLoadingIpAnalysis.set(false);
     }
   }
 }

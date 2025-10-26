@@ -27,6 +27,7 @@ export class AdaptiveDefenseComponent {
   // For the payload generator sandbox
   generatorSandboxOpen = signal(false);
   generationPrompt = signal<string>('');
+  generationTarget = signal<string>('');
   isLoadingGeneration = this.wafService.isLoadingAiPayload;
   generationResult = this.wafService.aiGeneratedPayload;
   generationError = this.wafService.aiPayloadError;
@@ -58,7 +59,10 @@ export class AdaptiveDefenseComponent {
 
   generatePayload() {
     if (this.generationPrompt().trim()) {
-      this.wafService.generatePayloadFromPrompt(this.generationPrompt());
+      this.wafService.generatePayloadFromPrompt({
+        prompt: this.generationPrompt(),
+        target: this.generationTarget()
+      });
     }
   }
 
