@@ -3,7 +3,12 @@ export type ActionTaken = 'Allowed' | 'Monitored' | 'Blocked';
 export type ViewType = 'dashboard' | 'traffic' | 'adaptive-defense' | 'about' | 'target' | 'attacker' | 'threat-model' | 'server-terminal';
 export type TargetLoginStatus = 'Logged Out' | 'Logged In' | 'Login Bypassed!';
 export type SecurityLevel = 'Low' | 'Medium' | 'High';
+export type HoneypotStatus = 'Active' | 'Under Attack' | 'Initializing';
 
+export interface HoneypotStats {
+  status: HoneypotStatus;
+  luredAttackers: number;
+}
 
 export interface GeoLocation {
   lat: number;

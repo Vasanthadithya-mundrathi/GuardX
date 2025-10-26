@@ -1,6 +1,6 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
-import { RequestLog, ThreatStats, ThreatLevel, ActionTaken, ViewType, ThreatAnalysisResult, IPReputationResult, AdaptiveRule, TargetLoginStatus, PayloadGeneratorResult, SecurityLevel } from '../types';
+import { RequestLog, ThreatStats, ThreatLevel, ActionTaken, ViewType, ThreatAnalysisResult, IPReputationResult, AdaptiveRule, TargetLoginStatus, PayloadGeneratorResult, SecurityLevel, HoneypotStats } from '../types';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +19,10 @@ export class WafService {
     adaptiveRules: 0,
   });
   readonly adaptiveRules: WritableSignal<AdaptiveRule[]> = signal([]);
+  readonly honeypotStats: WritableSignal<HoneypotStats> = signal({
+    status: 'Initializing',
+    luredAttackers: 0,
+  });
   
   // Shared state for payload generator -> attacker tools
   readonly payloadForAttacker = signal<string>('');
@@ -63,6 +67,7 @@ export class WafService {
       this.aiPayloadError.set(errorMsg);
     }
     this.updateUptime();
+    this.initializeHoneypot();
   }
 
   setActiveView(view: ViewType) {
@@ -93,6 +98,7 @@ export class WafService {
             if (this.firewallEnabled()) {
                this.generateAndDeployAdaptiveRule('Rate Limit', 'Multiple failed login attempts detected.');
             }
+            this.triggerHoneypotLure('High');
             return { success: false, message: `Attack (Rate Limit) Blocked by GuardX Firewall.`, log };
         }
     }
@@ -132,6 +138,7 @@ export class WafService {
         this.stats.update(s => ({...s, threatsBlocked: s.threatsBlocked + 1}));
         // This is the trigger for the Adaptive Defense Engine
         this.generateAndDeployAdaptiveRule(threat!.type, req.payload!);
+        this.triggerHoneypotLure(threat!.level);
         return { success: false, message: `Attack (${threat?.type}) Blocked by GuardX Firewall.`, log };
     }
 
@@ -197,6 +204,35 @@ export class WafService {
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       this.stats.update(s => ({...s, uptime: `${d}d ${h}h ${m}m`}));
     }, 1000 * 60);
+  }
+
+  private initializeHoneypot(): void {
+    setTimeout(() => {
+      this.honeypotStats.update(stats => ({ ...stats, status: 'Active' }));
+    }, 2500);
+  }
+
+  private triggerHoneypotLure(level: ThreatLevel): void {
+    this.honeypotStats.update(stats => {
+      const isHighSeverity = level === 'Critical' || level === 'High';
+      return {
+        luredAttackers: stats.luredAttackers + 1,
+        status: isHighSeverity ? 'Under Attack' : stats.status,
+      };
+    });
+
+    // If status was changed to 'Under Attack', reset it after a while
+    if (this.honeypotStats().status === 'Under Attack') {
+      setTimeout(() => {
+        this.honeypotStats.update(stats => {
+            // Only revert if it's still 'Under Attack', to avoid race conditions
+            if (stats.status === 'Under Attack') {
+                return { ...stats, status: 'Active' };
+            }
+            return stats;
+        });
+      }, 5000); // Revert to active after 5 seconds
+    }
   }
 
   async generateAndDeployAdaptiveRule(threatType: string, payload: string): Promise<void> {

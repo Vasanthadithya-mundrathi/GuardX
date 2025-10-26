@@ -17,7 +17,7 @@ export class DashboardComponent {
     this.wafService.requestLogs().filter(log => log.threatLevel !== 'None').slice(0, 5)
   );
   
-  honeypotStats = signal({ luredAttackers: 14 });
+  honeypotStats = this.wafService.honeypotStats;
 
   threatTypeCounts = computed(() => {
     const counts = new Map<string, number>();
