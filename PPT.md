@@ -58,7 +58,26 @@ An intelligent, **adaptive** WAF that learns from threats in real-time.
 
 ## 🏛️ System Architecture
 
+```mermaid
+graph LR
+    subgraph "Browser Client (Angular App)"
+        Attacker["Attacker Tools UI"] -- "1. Simulates Attack" --> WAF;
+        WAF["WafService (Core Logic)"] -- "2. Intercepts Request" --> WAF;
+        WAF -- "3a. No Threat Detected" --> Target["Target Site UI"];
+        WAF -- "3b. Threat Detected" --> Blocked["Request Blocked"];
+        Blocked -- "4. Is Threat Novel?" --> Gemini["Google Gemini API"];
+        Gemini -- "5. Generates New Rule" --> WAF;
+        WAF -- "6. Deploys Adaptive Rule" --> State["State (Angular Signals)"];
+        WAF -- "7. Updates Logs & Stats" --> State;
+        State -- "8. UI Reacts to State" --> Dashboard["Dashboard & Other UI"];
+    end
 
+    style WAF fill:#1a2234,stroke:#22d3ee,stroke-width:2px
+    style Gemini fill:#1a2234,stroke:#fbbc05,stroke-width:2px
+    style State fill:#1a2234,stroke:#9ca3af,stroke-width:1px,stroke-dasharray: 5 5
+    style Attacker fill:#1a2234,stroke:#ef4444,stroke-width:2px
+    style Target fill:#1a2234,stroke:#34d399,stroke-width:2px
+```
 
 <div style="font-size: 0.7em; margin-top: 1em;">
 This diagram illustrates the flow of a simulated attack within the self-contained GuardX application, from initiation to AI-driven rule adaptation and UI update.
