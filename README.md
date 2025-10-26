@@ -1,6 +1,6 @@
 # GuardX: AI-Powered Adaptive Web Application Firewall
 
-![GuardX Dashboard](https://i.imgur.com/u0E7x8M.png)
+![GuardX Dashboard]
 
 GuardX is an intelligent, adaptive Web Application Firewall (WAF) that proactively detects and mitigates unknown threats by dynamically generating security rules in real-time, moving beyond the limitations of traditional signature-based firewalls. This project was developed for the **COSC - Hacktoberfest : Hackathon**.
 
